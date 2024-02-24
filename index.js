@@ -28,16 +28,16 @@ class Tree {
         this.saleMap = new Map();
     }
 
-    async preorderTraversal(node = this.root, level = 0) {
+    async preorderTraversal(node = this.root, level = 0, maxLevel = 10) {
         if (node) {
             await this.getNewNodeEvents(node.address, level);
             level++;
-            // node.children.forEach(child => this.preorderTraversal(child));
-            let searchNode = this.search(node.address);
-            for (const child of searchNode.children) {
-                await this.preorderTraversal(child, level);
+            if (level <= maxLevel) {
+                let searchNode = this.search(node.address);
+                for (const child of searchNode.children) {
+                    await this.preorderTraversal(child, level);
+                }
             }
-
         }
     }
 
@@ -138,14 +138,14 @@ class Tree {
 
 }
 
-async function main(inputAddress) {
+async function main(inputAddress, maxLevel = 10) {
     console.log(`Referrals of ${inputAddress}`);
     const root = new Node(inputAddress);
     const tree = new Tree(root);
     try {
-        await tree.preorderTraversal();
+        await tree.preorderTraversal(root, 0, maxLevel);
     } catch (error) {
-        await bot.sendMessage(msg.chat.id, 'RPC Error. Please try again later.');
+        await bot.sendMessage(msg.chat.id, 'Error. Please try again later.');
         console.log(`err: ${error}`);
     }
 
@@ -157,7 +157,7 @@ bot.onText(/\/check (.+)/, async (msg, match) => {
     const address = kolMap[username];
     const LEVEL = '0';
     try {
-        const tree = await main(address);
+        const tree = await main(address, 0);
         const levelMap = tree.levelMap;
         const refCountMap = tree.refCountMap;
         const txNodesBuyMap = tree.txNodesBuyMap;
