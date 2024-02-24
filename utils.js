@@ -186,7 +186,9 @@ function logGeneral(levelContent, level, refCountMap, txNodesBuyMap, saleMap) {
     let s = ``;
     if (numberRef > 0) {
         let nocodeSale = (numNoCodeKeySold * NO_CODE_PRICE).toFixed(4);
-        let oxoaReward = (nocodeSale * 5 / 100).toFixed(4);
+        let code20Sale = (numCode20KeySold * CODE_20_PRICE).toFixed(4);
+        let code100Sale = (numCode100KeySold * CODE_100_PRICE).toFixed(4);
+        let oxoaReward = ((nocodeSale + code20Sale + code100Sale) * 5 / 100).toFixed(4);
         let bonusReward = 0.0;
         s += `Total Ref          :   ${refSet.size} ref\n\n`;
         s += `Total Key Sale  :   ${numNoCodeKeySold} 🔑 (${parseFloat(nocodeSale)} $ETH)\n\n`;
