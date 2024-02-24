@@ -185,13 +185,13 @@ function logGeneral(levelContent, level, refCountMap, txNodesBuyMap, saleMap) {
     let numberRef = refSet.size;
     let s = ``;
     if (numberRef > 0) {
-        let nocodeSale = numNoCodeKeySold * NO_CODE_PRICE;
-        let oxoaReward = nocodeSale * 5 / 100;
-        let bonusReward = 0;
+        let nocodeSale = (numNoCodeKeySold * NO_CODE_PRICE).toFixed(4);
+        let oxoaReward = (nocodeSale * 5 / 100).toFixed(4);
+        let bonusReward = 0.0;
         s += `Total Ref          :   ${refSet.size} ref\n\n`;
-        s += `Total Key Sale  :   ${numNoCodeKeySold} 🔑 (${nocodeSale} $ETH)\n\n`;
-        s += `Rewards 5%     :   ${oxoaReward} $ETH\n\n`;
-        s += `Bonus 5%         :   ${bonusReward} $ETH\n`;
+        s += `Total Key Sale  :   ${numNoCodeKeySold} 🔑 (${parseFloat(nocodeSale)} $ETH)\n\n`;
+        s += `Rewards 5%     :   ${parseFloat(oxoaReward)} $ETH\n\n`;
+        s += `Bonus 5%         :   ${parseFloat(bonusReward)} $ETH\n`;
     }
     return s;
 }
