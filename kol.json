@@ -1,4 +1,5 @@
 {
+    "nsb": "0x3E657D3CF4cb2104E6A5a6eD6f19aE23d8869999",
     "nicky": "0x7a510789ff98074bc6a75b06d0f447c7ba8b6842",
     "lisa": "0x007030effb30b950806ed6d9cffc03f91e4db8dd",
     "gekko": "0xff9300a1d622596e1a9258e86f102cfe3494b880",
@@ -6,5 +7,6 @@
     "kan": "0x7305b6f4f6e80a3ad8d16102800892b3cbd2dccc",
     "trimai": "0x54074ecb85f8b0aa14d3246b1d0301be35dc93f1",
     "ni": "0x007030effb30b950806ed6d9cffc03f91e4db8dd",
-    "uranus": "0x7b4c5d1990248854786de3733f93c31484a8720d"
+    "uranus": "0x7b4c5d1990248854786de3733f93c31484a8720d",
+    "rvn": "0xda52bf30c1d0c48e734b53d3843c4225eeb649a5"
 }
