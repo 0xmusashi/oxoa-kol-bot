@@ -191,7 +191,7 @@ function logGeneral(levelContent, level, refCountMap, txNodesBuyMap, saleMap) {
         let oxoaReward = ((nocodeSale + code20Sale + code100Sale) * 5 / 100).toFixed(4);
         let bonusReward = 0.0;
         s += `Total Ref          :   ${refSet.size} ref\n\n`;
-        s += `Total Key Sale  :   ${numNoCodeKeySold} 🔑 (${parseFloat(nocodeSale)} $ETH)\n\n`;
+        s += `Total Key Sale  :   ${numberKeySold} 🔑 (${parseFloat(nocodeSale)} $ETH)\n\n`;
         s += `Rewards 5%     :   ${parseFloat(oxoaReward)} $ETH\n\n`;
         s += `Bonus 5%         :   ${parseFloat(bonusReward)} $ETH\n`;
     }
