@@ -1,10 +1,25 @@
-const NO_CODE_PRICE = 0.04;
-const CODE_20_PRICE = 0.032;
-const CODE_100_PRICE = 0.0004;
-const TXS_PER_PAGE = 20;
+const {
+    TIER_PRICE_MAP,
+} = require('./constants');
 
 function formatAddress(address) {
     return address.slice(0, 4) + '...' + address.slice(-3);
+}
+
+function getLevelFromCommand(match) {
+    const s = match[0];
+    const level = s.split(' ')[0].split('lv')[1];
+    return level;
+}
+
+function getTierFromTxValueAndNumKeys(value, numKeys) {
+    let price = value / numKeys;
+    let prices = [-1.0];
+    for (const [_, value] of Object.entries(TIER_PRICE_MAP)) {
+        prices.push(value[0]);
+    }
+    let result = prices.indexOf(parseFloat(price.toFixed(4)));
+    return result;
 }
 
 function splitArrayWithOffset(arr, size, offset = 0) {
@@ -27,157 +42,36 @@ function splitArrayWithOffset(arr, size, offset = 0) {
     return subarrays;
 }
 
-function logLevelMap(levelContent, level, refCountMap, txNodesBuyMap, saleMap) {
-    let s1 = ``;
-    if (level > 0) {
-        s1 = `🔗 Level ${level}:\n`;
-    }
-    let s2 = '';
-    function logTxsMap(txs, user) {
-        let s3 = '';
-        let numberRef = refCountMap.get(user);
-        let userUrl = `https://explorer.zksync.io/address/${user}`;
-
-        s3 = s3.concat(`👨 <a href='${userUrl}'>${formatAddress(user)}</a> sold ${saleMap.get(user)} 🔑 & ${numberRef} direct ref\n`);
-        if (numberRef > 0 && txs.length > 0) {
-            s3 = s3.concat(`\t\t\t\tBuy Txs:\n`);
-            for (let i = 0; i < txs.length; i++) {
-                const [numNodes, ethValue, _] = txNodesBuyMap.get(txs[i]);
-                let k = `🔑`;
-                if (ethValue == NO_CODE_PRICE * numNodes) {
-                    k = `🔑`;
-                } else if (ethValue == CODE_20_PRICE * numNodes) {
-                    k = `🗝`;
-                } else if (ethValue == CODE_100_PRICE * numNodes) {
-                    k = `🎁`;
-                }
-                s3 = s3.concat(`\t\t\t\t\t🔸 <a href='https://explorer.zksync.io/tx/${txs[i]}'>Buy ${numNodes} ${k} (${ethValue} $ETH)</a>\n`);
-            }
-            s3 = s3.concat(`\n`);
-        }
-        return s3;
-    }
-    levelContent.forEach((txs, user) => {
-        s2 += logTxsMap(txs, user);
-    });
-    return s1 + s2;
-}
-
-function logPage(levelContent, level, refCountMap, txNodesBuyMap, saleMap, page = 1) {
-    let s2 = '';
-    let allLogs = [];
-    function logTxsMap(txs, user) {
-        let logs = [];
-        let numberRef = refCountMap.get(user);
-        if (numberRef > 0 && txs.length > 0) {
-            for (let i = 0; i < txs.length; i++) {
-                const [numNodes, ethValue, _] = txNodesBuyMap.get(txs[i]);
-                let k = `🔑`;
-                if (ethValue == NO_CODE_PRICE * numNodes) {
-                    k = `🔑`;
-                } else if (ethValue == CODE_20_PRICE * numNodes) {
-                    k = `🗝`;
-                } else if (ethValue == CODE_100_PRICE * numNodes) {
-                    k = `🎁`;
-                }
-                logs.push(`\t\t\t\t\t🔸 <a href='https://explorer.zksync.io/tx/${txs[i]}'>Buy ${numNodes} ${k} (${ethValue} $ETH)</a>\n`);
-            }
-        }
-        return logs;
-    }
-
-    levelContent.forEach((txs, user) => {
-        let logs = logTxsMap(txs, user);
-        allLogs = [...allLogs, ...logs];
-    });
-
-    const splitLogs = splitArrayWithOffset(allLogs, TXS_PER_PAGE);
-
-    if (page > splitLogs.length) {
-        s2 += `No more tx\n`;
-    } else {
-        const dipslayText = splitLogs[page - 1];
-        for (const text of dipslayText) {
-            s2 += text;
-        }
-    }
-
-    return s2;
-}
-
-function logPageCodeType(levelContent, refCode, refCountMap, txNodesBuyMap, saleMap, page = 1) {
-    let s2 = '';
-    let allLogs = [];
-    function logTxsMap(txs, user) {
-        let logs = [];
-        let numberRef = refCountMap.get(user);
-        if (numberRef > 0 && txs.length > 0) {
-            for (let i = 0; i < txs.length; i++) {
-                const [numNodes, ethValue, _] = txNodesBuyMap.get(txs[i]);
-                let k = `🔑`;
-                let code = '0';
-                if (ethValue == NO_CODE_PRICE * numNodes) {
-                    k = `🔑`;
-                    code = '0';
-                } else if (ethValue == CODE_20_PRICE * numNodes) {
-                    k = `🗝`;
-                    code = '20';
-                } else if (ethValue == CODE_100_PRICE * numNodes) {
-                    k = `🎁`;
-                    code = '100';
-                }
-                let log = `\t\t\t\t\t🔸 <a href='https://explorer.zksync.io/tx/${txs[i]}'>Buy ${numNodes} ${k} (${ethValue} $ETH)</a>\n\n`;
-
-                if (code == refCode) {
-                    logs.push(log);
-                }
-            }
-        }
-        return logs;
-    }
-
-    levelContent.forEach((txs, user) => {
-        let logs = logTxsMap(txs, user);
-        allLogs = [...allLogs, ...logs];
-    });
-
-    const splitLogs = splitArrayWithOffset(allLogs, TXS_PER_PAGE);
-
-    let numPages = splitLogs.length;
-    if (page > numPages) {
-        s2 += `No more tx\n`;
-    } else {
-        const dipslayText = splitLogs[page - 1];
-        for (const text of dipslayText) {
-            s2 += text;
-        }
-    }
-
-    return [s2, numPages];
-}
-
-function logGeneral(levelContent, level, refCountMap, txNodesBuyMap, saleMap) {
+function logGeneral(levelContent, level, refCountMap, txNodesBuyMap, saleMap, tier) {
 
     let numberKeySold = 0;
+    let totalSale = 0.0;
     let refSet = new Set();
 
     let numNoCodeKeySold = 0;
     let numCode20KeySold = 0;
     let numCode100KeySold = 0;
 
+    const [NO_CODE_PRICE, CODE_20_PRICE, CODE_100_PRICE] = TIER_PRICE_MAP[tier];
+
     levelContent.forEach((txs, user) => {
         if (txs.length > 0) {
             for (let i = 0; i < txs.length; i++) {
-                const [numNodes, txValue, from] = txNodesBuyMap.get(txs[i]);
-                refSet.add(from);
-                numberKeySold += numNodes;
+                const [numNodes, txValue, from, txTier] = txNodesBuyMap.get(txs[i]);
 
-                if (txValue == NO_CODE_PRICE * numNodes) {
+                if (txValue == parseFloat((NO_CODE_PRICE * numNodes).toFixed(4))) {
                     numNoCodeKeySold += numNodes;
-                } else if (txValue == CODE_20_PRICE * numNodes) {
+                    refSet.add(from);
+                } else if (txValue == parseFloat((CODE_20_PRICE * numNodes).toFixed(4))) {
                     numCode20KeySold += numNodes;
-                } else if (txValue == CODE_100_PRICE * numNodes) {
+                    refSet.add(from);
+                } else if (txValue == parseFloat((CODE_100_PRICE * numNodes).toFixed(4))) {
                     numCode100KeySold += numNodes;
+                    refSet.add(from);
+                } else {
+                    if (txTier == tier) {
+                        console.log(`tx: ${txs[i]}`);
+                    }
                 }
             }
         }
@@ -188,14 +82,15 @@ function logGeneral(levelContent, level, refCountMap, txNodesBuyMap, saleMap) {
         let nocodeSale = numNoCodeKeySold * NO_CODE_PRICE;
         let code20Sale = numCode20KeySold * CODE_20_PRICE;
         let code100Sale = numCode100KeySold * CODE_100_PRICE;
-        let oxoaReward = ((nocodeSale + code20Sale + code100Sale) * 5 / 100).toFixed(4);
-        let bonusReward = 0.0;
-        s += `Total Ref          :   ${refSet.size} ref\n\n`;
-        s += `Total Key Sale  :   ${numberKeySold} 🔑 (${parseFloat(nocodeSale)} $ETH)\n\n`;
-        s += `Rewards 5%     :   ${parseFloat(oxoaReward)} $ETH\n\n`;
-        s += `Bonus 5%         :   ${parseFloat(bonusReward)} $ETH\n`;
+        totalSale = nocodeSale + code20Sale + code100Sale;
+        numberKeySold += numNoCodeKeySold + numCode20KeySold + numCode100KeySold;
+
+        s += `🔗 L${parseInt(level)}: ${refSet.size} ref - ${numberKeySold} keys - Level sale: ${parseFloat(totalSale.toFixed(4))} $ETH\n\n`;
+        s += `      0 %     :   ${numNoCodeKeySold} 🔑 (${parseFloat(nocodeSale.toFixed(4))} $ETH) \n`;
+        s += `      20 %   :   ${numCode20KeySold} 🗝 (${parseFloat(code20Sale.toFixed(4))} $ETH) \n`;
+        s += `      100 % :   ${numCode100KeySold} 🎁 (${parseFloat(code100Sale.toFixed(4))} $ETH)`;
     }
-    return s;
+    return [s, numberKeySold, totalSale];
 }
 
 /*
@@ -229,4 +124,9 @@ saleMapNoCode = {
 }
 */
 
-module.exports = { formatAddress, logLevelMap, logGeneral, logPage, logPageCodeType };
+module.exports = {
+    getLevelFromCommand,
+    formatAddress,
+    logGeneral,
+    getTierFromTxValueAndNumKeys
+};

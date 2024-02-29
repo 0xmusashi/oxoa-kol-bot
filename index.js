@@ -3,12 +3,15 @@ const abi = require("./abi.json");
 const kolMap = require("./kol.json");
 require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
-const { formatAddress, logLevelMap, logGeneral, logPage, logPageCodeType } = require('./utils');
+const { formatAddress, logGeneral, getTierFromTxValueAndNumKeys } = require('./utils');
 
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: true });
 
-const CONTRACT_ADDRESS = '0x2a88444D7A5626e52928D9799ae15F0Bb273bFbd';
-const RPC = 'https://mainnet.era.zksync.io';
+const {
+    CONTRACT_ADDRESS,
+    RPC,
+    TIERS
+} = require('./constants');
 
 const provider = new ethers.providers.JsonRpcProvider(RPC);
 
@@ -28,7 +31,7 @@ class Tree {
         this.saleMap = new Map();
     }
 
-    async preorderTraversal(node = this.root, level = 0, maxLevel = 10) {
+    async preorderTraversal(node = this.root, level = 1, maxLevel = 10) {
         if (node) {
             await this.getNewNodeEvents(node.address, level);
             level++;
@@ -95,7 +98,8 @@ class Tree {
                 let tx = await provider.getTransaction(txHash);
                 let txValue = parseFloat(ethers.utils.formatUnits(tx.value).toString());
 
-                this.txNodesBuyMap.set(txHash, [numberOfNodes, txValue, tx.from]);
+                let tier = getTierFromTxValueAndNumKeys(txValue, numberOfNodes).toString();
+                this.txNodesBuyMap.set(txHash, [numberOfNodes, txValue, tx.from, tier]);
 
                 let child = new Node(owner);
                 if (!ownersSet.has(owner)) {
@@ -143,7 +147,7 @@ async function main(inputAddress, maxLevel = 10) {
     const root = new Node(inputAddress);
     const tree = new Tree(root);
     try {
-        await tree.preorderTraversal(root, 0, maxLevel);
+        await tree.preorderTraversal(root, 1, maxLevel);
     } catch (error) {
         await bot.sendMessage(msg.chat.id, 'Error. Please try again later.');
         console.log(`err: ${error}`);
@@ -152,10 +156,19 @@ async function main(inputAddress, maxLevel = 10) {
     return tree;
 }
 
-bot.onText(/\/check (.+)/, async (msg, match) => {
+bot.onText(/\/check (.+) (.+)/, async (msg, match) => {
     const username = match[1].toLowerCase();
     const address = kolMap[username];
-    const LEVEL = '0';
+
+    const tierParam = match[2].toLowerCase();
+    if (!TIERS.includes(tierParam)) {
+        console.log(`invalid tier ${tierParam}`);
+        await bot.sendMessage(msg.chat.id, `Invalid tier ${tierParam}`);
+        return;
+    }
+    const tier = tierParam.split('t')[1];
+
+    const LEVEL = '1';
     try {
         const tree = await main(address, 0);
         const levelMap = tree.levelMap;
@@ -164,12 +177,13 @@ bot.onText(/\/check (.+)/, async (msg, match) => {
         const saleMap = tree.saleMap;
 
         const userUrl = `https://explorer.zksync.io/address/${address}`;
-        let message = `👨 <a href='${userUrl}'>${formatAddress(address)}</a> Ref Info\n\n`;
+        let message = `👨 <a href='${userUrl}'>${formatAddress(address)}</a> Ref Info - Tier ${tier}\n\n`;
         if (!levelMap.has(LEVEL)) {
             message += `You have 0️⃣ Ref. Try again later!`;
         } else {
             const levelContent = levelMap.get(LEVEL);
-            message += logGeneral(levelContent, LEVEL, refCountMap, txNodesBuyMap, saleMap);
+            const [s1, numKeys, saleETH] = logGeneral(levelContent, LEVEL, refCountMap, txNodesBuyMap, saleMap, tier);
+            message += s1;
         }
         const opts = {
             parse_mode: 'HTML',
