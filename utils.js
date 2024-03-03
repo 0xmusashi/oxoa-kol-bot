@@ -350,8 +350,7 @@ function logTier(levelContent, level, refCountMap, txNodesBuyMap, saleMap, curre
         }
     });
     let s = ``;
-    s += `🔗 L${parseInt(level)}: ${totalRefSet.size} ref - ${numberKeySold} keys\n`;
-    s += `      Total sale: ${parseFloat(totalSale.toFixed(6))} $ETH\n\n`;
+    s += `🧍 Total ref: ${totalRefSet.size} ref\n\n`;
     for (let tier = 1; tier <= currentTier; tier++) {
         let tierContent = content.get(tier.toString());
         if (tierContent) {

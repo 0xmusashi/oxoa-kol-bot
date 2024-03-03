@@ -4,7 +4,13 @@ const abi = require("./abi.json");
 const kolMap = require("./kol.json");
 require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
-const { formatAddress, logGeneral, getTierFromNodePrice, loadDataFromJsonFile } = require('./utils');
+const {
+    formatAddress,
+    logGeneral,
+    getTierFromNodePrice,
+    loadDataFromJsonFile,
+    logTier,
+} = require('./utils');
 
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: true });
 
@@ -179,89 +185,89 @@ async function loadTreeFromJsonFile(inputAddress) {
     }
 }
 
-bot.onText(/\/check (.+) (.+)/, async (msg, match) => {
-    const username = match[1].toLowerCase();
-    let address = kolMap[username];
-    let isAddressFound = true;
-    if (!address) {
-        address = username;
-        isAddressFound = false;
-    }
-    address = address.toLowerCase();
+// bot.onText(/\/check (.+) (.+)/, async (msg, match) => {
+//     const username = match[1].toLowerCase();
+//     let address = kolMap[username];
+//     let isAddressFound = true;
+//     if (!address) {
+//         address = username;
+//         isAddressFound = false;
+//     }
+//     address = address.toLowerCase();
 
-    const tierParam = match[2].toLowerCase();
-    if (!TIERS.includes(tierParam)) {
-        console.log(`invalid tier ${tierParam}`);
-        await bot.sendMessage(msg.chat.id, `Invalid tier ${tierParam}`);
-        return;
-    }
-    const tier = tierParam.split('t')[1];
+//     const tierParam = match[2].toLowerCase();
+//     if (!TIERS.includes(tierParam)) {
+//         console.log(`invalid tier ${tierParam}`);
+//         await bot.sendMessage(msg.chat.id, `Invalid tier ${tierParam}`);
+//         return;
+//     }
+//     const tier = tierParam.split('t')[1];
 
-    const LEVEL = '1';
-    try {
-        // const tree = await main(address, 1);
-        let tree;
-        if (isAddressFound) {
-            tree = await loadTreeFromJsonFile(address.toLowerCase());
-            const levelMap = new Map(Object.entries(tree.levelMap));
-            levelMap.forEach((levelContent, level) => {
-                levelMap.set(level, new Map(Object.entries(levelContent)));
-            });
-            const refCountMap = new Map(Object.entries(tree.refCountMap));
-            const txNodesBuyMap = new Map(Object.entries(tree.txNodesBuyMap));
-            const saleMap = new Map(Object.entries(tree.saleMap));
+//     const LEVEL = '1';
+//     try {
+//         // const tree = await main(address, 1);
+//         let tree;
+//         if (isAddressFound) {
+//             tree = await loadTreeFromJsonFile(address.toLowerCase());
+//             const levelMap = new Map(Object.entries(tree.levelMap));
+//             levelMap.forEach((levelContent, level) => {
+//                 levelMap.set(level, new Map(Object.entries(levelContent)));
+//             });
+//             const refCountMap = new Map(Object.entries(tree.refCountMap));
+//             const txNodesBuyMap = new Map(Object.entries(tree.txNodesBuyMap));
+//             const saleMap = new Map(Object.entries(tree.saleMap));
 
-            tree.levelMap = levelMap;
-            tree.refCountMap = refCountMap;
-            tree.txNodesBuyMap = txNodesBuyMap;
-            tree.saleMap = saleMap;
+//             tree.levelMap = levelMap;
+//             tree.refCountMap = refCountMap;
+//             tree.txNodesBuyMap = txNodesBuyMap;
+//             tree.saleMap = saleMap;
 
-        } else {
-            tree = await main(address, 1);
-        }
-        const levelMap = tree.levelMap;
-        const refCountMap = tree.refCountMap;
-        const txNodesBuyMap = tree.txNodesBuyMap;
-        const saleMap = tree.saleMap;
+//         } else {
+//             tree = await main(address, 1);
+//         }
+//         const levelMap = tree.levelMap;
+//         const refCountMap = tree.refCountMap;
+//         const txNodesBuyMap = tree.txNodesBuyMap;
+//         const saleMap = tree.saleMap;
 
-        const userUrl = `https://explorer.zksync.io/address/${address}`;
-        let message = `👨 <a href='${userUrl}'>${formatAddress(address)}</a> Ref Info - Tier ${tier}\n\n`;
-        if (!levelMap.has(LEVEL)) {
-            message += `You have 0️⃣ Ref. Try again later!`;
-        } else {
-            const levelContent = levelMap.get(LEVEL);
-            const [s1, numKeys, saleETH] = logGeneral(levelContent, LEVEL, refCountMap, txNodesBuyMap, saleMap, tier);
-            message += s1;
-        }
+//         const userUrl = `https://explorer.zksync.io/address/${address}`;
+//         let message = `👨 <a href='${userUrl}'>${formatAddress(address)}</a> Ref Info - Tier ${tier}\n\n`;
+//         if (!levelMap.has(LEVEL)) {
+//             message += `You have 0️⃣ Ref. Try again later!`;
+//         } else {
+//             const levelContent = levelMap.get(LEVEL);
+//             const [s1, numKeys, saleETH] = logGeneral(levelContent, LEVEL, refCountMap, txNodesBuyMap, saleMap, tier);
+//             message += s1;
+//         }
 
-        // bonus reward txs
-        const bonusData = await loadDataFromJsonFile();
-        const txs = bonusData[address];
-        let bonusReward = 0.0;
-        let bonusRewardMsg = ``;
-        if (txs && txs.length) {
-            for (let i = 0; i < txs.length; i++) {
-                let tx = await provider.getTransaction(txs[i]);
-                const txValue = parseFloat(ethers.utils.formatUnits(tx.value));
-                bonusReward += txValue;
-                const logValue = parseFloat(txValue.toFixed(6));
-                bonusRewardMsg += `\t\t\t\t<b>Tx: <a href="https://explorer.zksync.io/tx/${txs[i]}">${formatAddress(txs[i])}</a> (${logValue} $ETH)</b>\n\n`
-            }
-        }
+//         // bonus reward txs
+//         const bonusData = await loadDataFromJsonFile();
+//         const txs = bonusData[address];
+//         let bonusReward = 0.0;
+//         let bonusRewardMsg = ``;
+//         if (txs && txs.length) {
+//             for (let i = 0; i < txs.length; i++) {
+//                 let tx = await provider.getTransaction(txs[i]);
+//                 const txValue = parseFloat(ethers.utils.formatUnits(tx.value));
+//                 bonusReward += txValue;
+//                 const logValue = parseFloat(txValue.toFixed(6));
+//                 bonusRewardMsg += `\t\t\t\t<b>Tx: <a href="https://explorer.zksync.io/tx/${txs[i]}">${formatAddress(txs[i])}</a> (${logValue} $ETH)</b>\n\n`
+//             }
+//         }
 
-        message += `Bonus 5%: ${parseFloat(bonusReward)} $ETH\n\n`;
-        message += bonusRewardMsg;
+//         message += `Bonus 5%: ${parseFloat(bonusReward)} $ETH\n\n`;
+//         message += bonusRewardMsg;
 
-        const opts = {
-            parse_mode: 'HTML',
-        }
+//         const opts = {
+//             parse_mode: 'HTML',
+//         }
 
-        await bot.sendMessage(msg.chat.id, message, opts);
-    } catch (error) {
-        await bot.sendMessage(msg.chat.id, 'Error. Please try again later.');
-        console.log(`err: ${error}`)
-    }
-});
+//         await bot.sendMessage(msg.chat.id, message, opts);
+//     } catch (error) {
+//         await bot.sendMessage(msg.chat.id, 'Error. Please try again later.');
+//         console.log(`err: ${error}`)
+//     }
+// });
 
 bot.onText(/\/pay (.+)/, async (msg, match) => {
     if (!ADMIN_IDS.includes(msg.from.id)) {
@@ -292,6 +298,102 @@ bot.onText(/\/pay (.+)/, async (msg, match) => {
     } catch (err) {
         await bot.sendMessage(msg.chat.id, 'Error. Please try again later.');
         console.log(`err: ${err}`)
+    }
+});
+
+bot.onText(/\/check (.+)/, async (msg, match) => {
+    const username = match[1].toLowerCase();
+    let address = kolMap[username];
+    let isAddressFound = true;
+    if (!address) {
+        address = username;
+        isAddressFound = false;
+    }
+    if (!ADMIN_IDS.includes(msg.from.id)) {
+        console.log(`unauthorized user ${msg.from.id}`);
+        return; // Ignore messages from unauthorized users
+    }
+
+    try {
+        // const tree = await main(address);
+        let tree;
+        if (isAddressFound) {
+            tree = await loadTreeFromJsonFile(address.toLowerCase());
+            const levelMap = new Map(Object.entries(tree.levelMap));
+            levelMap.forEach((levelContent, level) => {
+                levelMap.set(level, new Map(Object.entries(levelContent)));
+            });
+            const refCountMap = new Map(Object.entries(tree.refCountMap));
+            const txNodesBuyMap = new Map(Object.entries(tree.txNodesBuyMap));
+            const saleMap = new Map(Object.entries(tree.saleMap));
+
+            tree.levelMap = levelMap;
+            tree.refCountMap = refCountMap;
+            tree.txNodesBuyMap = txNodesBuyMap;
+            tree.saleMap = saleMap;
+
+        } else {
+            tree = await main(address);
+        }
+        const levelMap = tree.levelMap;
+        const refCountMap = tree.refCountMap;
+        const txNodesBuyMap = tree.txNodesBuyMap;
+        const saleMap = tree.saleMap;
+        const currentTier = tree.currentTier;
+
+        const userUrl = `https://explorer.zksync.io/address/${address}`;
+        let message = `👨 <b><a href='${userUrl}'>${formatAddress(address)}</a> Check Full Tier</b>\n\n`;
+
+        let s = ``;
+        let totalKeys = 0;
+        let totalSaleETH = 0.0;
+
+        // levelMap.forEach((levelContent, level) => {
+        //     const [s1, numKeys, saleETH] = logTier(levelContent, level, refCountMap, txNodesBuyMap, saleMap, currentTier);
+        //     if (numKeys > 0) {
+        //         s += s1;
+        //         totalKeys += numKeys;
+        //         totalSaleETH += saleETH;
+        //     }
+        // });
+        levelContent = levelMap.get('1');
+        const [s1, numKeys, saleETH] = logTier(levelContent, '1', refCountMap, txNodesBuyMap, saleMap, currentTier);
+        if (numKeys > 0) {
+            s += s1;
+            totalKeys += numKeys;
+            totalSaleETH += saleETH;
+        }
+
+        message += `💲<b>Total sale: ${totalKeys} keys (${parseFloat(totalSaleETH.toFixed(6))} $ETH)</b>\n\n`;
+        message += s;
+
+        // bonus reward txs
+        const bonusData = await loadDataFromJsonFile();
+        const txs = bonusData[address];
+        let bonusReward = 0.0;
+        let bonusRewardMsg = ``;
+        if (txs && txs.length) {
+            for (let i = 0; i < txs.length; i++) {
+                let tx = await provider.getTransaction(txs[i]);
+                const txValue = parseFloat(ethers.utils.formatUnits(tx.value));
+                bonusReward += txValue;
+                const logValue = parseFloat(txValue.toFixed(6));
+                bonusRewardMsg += `\t\t\t\t\t\t<b>🔗 Tx: <a href="https://explorer.zksync.io/tx/${txs[i]}">${formatAddress(txs[i])}</a> (${logValue} $ETH)</b>\n\n`
+            }
+        }
+
+        message += `\t\t\t🏆 Reward 5%: ${parseFloat((totalSaleETH * 5 / 100).toFixed(6))} $ETH\n\n`;
+        message += `\t\t\t🎁️️ Bonus 5%: ${parseFloat(bonusReward)} $ETH\n\n`;
+        message += bonusRewardMsg;
+
+        const opts = {
+            parse_mode: 'HTML',
+        }
+
+        await bot.sendMessage(msg.chat.id, message, opts);
+    } catch (error) {
+        await bot.sendMessage(msg.chat.id, 'Error. Please try again later.');
+        console.log(`err: ${error}`)
     }
 });
 
