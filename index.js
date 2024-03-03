@@ -244,7 +244,7 @@ bot.onText(/\/check (.+) (.+)/, async (msg, match) => {
                 let tx = await provider.getTransaction(txs[i]);
                 const txValue = parseFloat(ethers.utils.formatUnits(tx.value)).toFixed(6);
                 bonusReward += txValue;
-                bonusRewardMsg += `\t\t\t\t<b>Tx: <a href="https://explorer.zksync.io/tx/${txs[i]}">${formatAddress(txs[i])}</a></b>\n\n`
+                bonusRewardMsg += `\t\t\t\t<b>Tx: <a href="https://explorer.zksync.io/tx/${txs[i]}">${formatAddress(txs[i])}</a> (${txValue} $ETH</b>\n\n`
             }
         }
 
