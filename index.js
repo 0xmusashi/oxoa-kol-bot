@@ -1,16 +1,18 @@
+const fs = require('fs/promises');
 const ethers = require("ethers");
 const abi = require("./abi.json");
 const kolMap = require("./kol.json");
 require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
-const { formatAddress, logGeneral, getTierFromTxValueAndNumKeys } = require('./utils');
+const { formatAddress, logGeneral, getTierFromNodePrice, loadDataFromJsonFile } = require('./utils');
 
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: true });
 
 const {
     CONTRACT_ADDRESS,
     RPC,
-    TIERS
+    TIERS,
+    ADMIN_IDS,
 } = require('./constants');
 
 const provider = new ethers.providers.JsonRpcProvider(RPC);
@@ -72,6 +74,12 @@ class Tree {
             // Create a contract instance
             const contract = new ethers.Contract(CONTRACT_ADDRESS, abi, provider);
 
+            // get current tier
+            const state = await contract._state();
+            const nodePrice = state['_nodePrice'];
+            const price = parseFloat(ethers.utils.formatUnits(nodePrice).toString());
+            this.currentTier = getTierFromNodePrice(price);
+
             const filter = {
                 address: CONTRACT_ADDRESS,
                 topics: [
@@ -98,7 +106,8 @@ class Tree {
                 let tx = await provider.getTransaction(txHash);
                 let txValue = parseFloat(ethers.utils.formatUnits(tx.value).toString());
 
-                let tier = getTierFromTxValueAndNumKeys(txValue, numberOfNodes).toString();
+                const _nodePrice = parseFloat(ethers.utils.formatUnits(args['_nodePrice']).toString());
+                let tier = getTierFromNodePrice(_nodePrice).toString();
                 this.txNodesBuyMap.set(txHash, [numberOfNodes, txValue, tx.from, tier]);
 
                 let child = new Node(owner);
@@ -156,9 +165,28 @@ async function main(inputAddress, maxLevel = 10) {
     return tree;
 }
 
+async function loadTreeFromJsonFile(inputAddress) {
+    console.log(`Referrals of ${inputAddress}`);
+    try {
+        const filePath = `../ref-bot/data/${inputAddress}.json`;
+        const data = await fs.readFile(filePath, 'utf8');
+        const tree = JSON.parse(data);
+        return tree;
+    } catch (error) {
+        console.log('error: ', error);
+        throw new Error("RPC call failed. Please try again");
+    }
+}
+
 bot.onText(/\/check (.+) (.+)/, async (msg, match) => {
     const username = match[1].toLowerCase();
-    const address = kolMap[username];
+    let address = kolMap[username];
+    let isAddressFound = true;
+    if (!address) {
+        address = username;
+        isAddressFound = false;
+    }
+    address = address.toLowerCase();
 
     const tierParam = match[2].toLowerCase();
     if (!TIERS.includes(tierParam)) {
@@ -170,7 +198,26 @@ bot.onText(/\/check (.+) (.+)/, async (msg, match) => {
 
     const LEVEL = '1';
     try {
-        const tree = await main(address, 0);
+        // const tree = await main(address, 1);
+        let tree;
+        if (isAddressFound) {
+            tree = await loadTreeFromJsonFile(address.toLowerCase());
+            const levelMap = new Map(Object.entries(tree.levelMap));
+            levelMap.forEach((levelContent, level) => {
+                levelMap.set(level, new Map(Object.entries(levelContent)));
+            });
+            const refCountMap = new Map(Object.entries(tree.refCountMap));
+            const txNodesBuyMap = new Map(Object.entries(tree.txNodesBuyMap));
+            const saleMap = new Map(Object.entries(tree.saleMap));
+
+            tree.levelMap = levelMap;
+            tree.refCountMap = refCountMap;
+            tree.txNodesBuyMap = txNodesBuyMap;
+            tree.saleMap = saleMap;
+
+        } else {
+            tree = await main(address, 1);
+        }
         const levelMap = tree.levelMap;
         const refCountMap = tree.refCountMap;
         const txNodesBuyMap = tree.txNodesBuyMap;
@@ -185,6 +232,24 @@ bot.onText(/\/check (.+) (.+)/, async (msg, match) => {
             const [s1, numKeys, saleETH] = logGeneral(levelContent, LEVEL, refCountMap, txNodesBuyMap, saleMap, tier);
             message += s1;
         }
+
+        // bonus reward txs
+        const bonusData = await loadDataFromJsonFile();
+        const txs = bonusData[address];
+        let bonusReward = 0.0;
+        let bonusRewardMsg = ``;
+        if (txs && txs.length) {
+            for (let i = 0; i < txs.length; i++) {
+                let tx = await provider.getTransaction(txs[i]);
+                const txValue = parseFloat(ethers.utils.formatUnits(tx.value)).toFixed(6);
+                bonusReward += txValue;
+                bonusRewardMsg += `\t\t\t\t<b>Tx: <a href="https://explorer.zksync.io/tx/${txs[i]}">${formatAddress(txs[i])}</a></b>\n\n`
+            }
+        }
+
+        message += `Bonus 5%: ${parseFloat(bonusReward)} $ETH\n\n`;
+        message += bonusRewardMsg;
+
         const opts = {
             parse_mode: 'HTML',
         }
@@ -193,6 +258,38 @@ bot.onText(/\/check (.+) (.+)/, async (msg, match) => {
     } catch (error) {
         await bot.sendMessage(msg.chat.id, 'Error. Please try again later.');
         console.log(`err: ${error}`)
+    }
+});
+
+bot.onText(/\/pay (.+)/, async (msg, match) => {
+    if (!ADMIN_IDS.includes(msg.from.id)) {
+        console.log(`unauthorized user ${msg.from.id}`);
+        return; // Ignore messages from unauthorized users
+    }
+
+    const txHash = match[1];
+
+    const data = await loadDataFromJsonFile();
+
+    try {
+        let tx = await provider.getTransaction(txHash);
+        const address = tx.to.toLowerCase();
+        const value = tx.value;
+        if (!data.hasOwnProperty(address)) {
+            data[address] = [txHash];
+        } else {
+            let txSet = new Set(data[address]);
+            txSet.add(txHash);
+            data[address] = Array.from(txSet);
+        }
+
+        const jsonData = JSON.stringify(data);
+        await fs.writeFile(FILE_PATH, jsonData);
+        await bot.sendMessage(msg.chat.id, 'Saved');
+
+    } catch (err) {
+        await bot.sendMessage(msg.chat.id, 'Error. Please try again later.');
+        console.log(`err: ${err}`)
     }
 });
 

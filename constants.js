@@ -26,6 +26,8 @@ const REFERRERS_PER_PAGE = 50;
 const REFERRERS_PER_PAGE_SHOWREF = 100;
 const LAST_5_TX = '0xa5733dba3e26e9c8cfb8c2f0c0af9fec0ffe6e7828ccece53fff76c7ccc2d54a';
 
+const FILE_PATH = `./data/bonus.json`;
+
 module.exports = {
     CONTRACT_ADDRESS,
     ADMIN_IDS,
@@ -38,4 +40,5 @@ module.exports = {
     REFERRERS_PER_PAGE,
     REFERRERS_PER_PAGE_SHOWREF,
     LAST_5_TX,
+    FILE_PATH
 }
