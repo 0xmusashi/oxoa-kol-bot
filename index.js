@@ -13,6 +13,7 @@ const {
     RPC,
     TIERS,
     ADMIN_IDS,
+    FILE_PATH
 } = require('./constants');
 
 const provider = new ethers.providers.JsonRpcProvider(RPC);
