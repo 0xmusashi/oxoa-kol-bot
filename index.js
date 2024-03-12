@@ -38,6 +38,7 @@ class Tree {
         this.refCountMap = new Map();
         this.txNodesBuyMap = new Map();
         this.saleMap = new Map();
+        this.currentTier = 1;
     }
 
     async preorderTraversal(node = this.root, level = 1, maxLevel = 10) {
@@ -57,7 +58,7 @@ class Tree {
         if (!parent) {
             throw new Error("Parent node cannot be null");
         }
-        if (parent.address != child.address) {
+        if (parent.address.toLowerCase() != child.address.toLowerCase()) {
             parent.children.unshift(child); // Insert child at the beginning for pre-order
             child.children.forEach(grandchild => this.preOrderInsert(child, grandchild));
         }
@@ -155,7 +156,6 @@ class Tree {
             console.error(error);
         }
     }
-
 }
 
 async function main(inputAddress, maxLevel = 10) {
@@ -184,90 +184,6 @@ async function loadTreeFromJsonFile(inputAddress) {
         throw new Error("RPC call failed. Please try again");
     }
 }
-
-// bot.onText(/\/check (.+) (.+)/, async (msg, match) => {
-//     const username = match[1].toLowerCase();
-//     let address = kolMap[username];
-//     let isAddressFound = true;
-//     if (!address) {
-//         address = username;
-//         isAddressFound = false;
-//     }
-//     address = address.toLowerCase();
-
-//     const tierParam = match[2].toLowerCase();
-//     if (!TIERS.includes(tierParam)) {
-//         console.log(`invalid tier ${tierParam}`);
-//         await bot.sendMessage(msg.chat.id, `Invalid tier ${tierParam}`);
-//         return;
-//     }
-//     const tier = tierParam.split('t')[1];
-
-//     const LEVEL = '1';
-//     try {
-//         // const tree = await main(address, 1);
-//         let tree;
-//         if (isAddressFound) {
-//             tree = await loadTreeFromJsonFile(address.toLowerCase());
-//             const levelMap = new Map(Object.entries(tree.levelMap));
-//             levelMap.forEach((levelContent, level) => {
-//                 levelMap.set(level, new Map(Object.entries(levelContent)));
-//             });
-//             const refCountMap = new Map(Object.entries(tree.refCountMap));
-//             const txNodesBuyMap = new Map(Object.entries(tree.txNodesBuyMap));
-//             const saleMap = new Map(Object.entries(tree.saleMap));
-
-//             tree.levelMap = levelMap;
-//             tree.refCountMap = refCountMap;
-//             tree.txNodesBuyMap = txNodesBuyMap;
-//             tree.saleMap = saleMap;
-
-//         } else {
-//             tree = await main(address, 1);
-//         }
-//         const levelMap = tree.levelMap;
-//         const refCountMap = tree.refCountMap;
-//         const txNodesBuyMap = tree.txNodesBuyMap;
-//         const saleMap = tree.saleMap;
-
-//         const userUrl = `https://explorer.zksync.io/address/${address}`;
-//         let message = `👨 <a href='${userUrl}'>${formatAddress(address)}</a> Ref Info - Tier ${tier}\n\n`;
-//         if (!levelMap.has(LEVEL)) {
-//             message += `You have 0️⃣ Ref. Try again later!`;
-//         } else {
-//             const levelContent = levelMap.get(LEVEL);
-//             const [s1, numKeys, saleETH] = logGeneral(levelContent, LEVEL, refCountMap, txNodesBuyMap, saleMap, tier);
-//             message += s1;
-//         }
-
-//         // bonus reward txs
-//         const bonusData = await loadDataFromJsonFile();
-//         const txs = bonusData[address];
-//         let bonusReward = 0.0;
-//         let bonusRewardMsg = ``;
-//         if (txs && txs.length) {
-//             for (let i = 0; i < txs.length; i++) {
-//                 let tx = await provider.getTransaction(txs[i]);
-//                 const txValue = parseFloat(ethers.utils.formatUnits(tx.value));
-//                 bonusReward += txValue;
-//                 const logValue = parseFloat(txValue.toFixed(6));
-//                 bonusRewardMsg += `\t\t\t\t<b>Tx: <a href="https://explorer.zksync.io/tx/${txs[i]}">${formatAddress(txs[i])}</a> (${logValue} $ETH)</b>\n\n`
-//             }
-//         }
-
-//         message += `Bonus 5%: ${parseFloat(bonusReward)} $ETH\n\n`;
-//         message += bonusRewardMsg;
-
-//         const opts = {
-//             parse_mode: 'HTML',
-//         }
-
-//         await bot.sendMessage(msg.chat.id, message, opts);
-//     } catch (error) {
-//         await bot.sendMessage(msg.chat.id, 'Error. Please try again later.');
-//         console.log(`err: ${error}`)
-//     }
-// });
 
 bot.onText(/\/pay (.+)/, async (msg, match) => {
     if (!ADMIN_IDS.includes(msg.from.id)) {
@@ -315,7 +231,6 @@ bot.onText(/\/check (.+)/, async (msg, match) => {
     }
 
     try {
-        // const tree = await main(address);
         let tree;
         if (isAddressFound) {
             tree = await loadTreeFromJsonFile(address.toLowerCase());
@@ -348,14 +263,6 @@ bot.onText(/\/check (.+)/, async (msg, match) => {
         let totalKeys = 0;
         let totalSaleETH = 0.0;
 
-        // levelMap.forEach((levelContent, level) => {
-        //     const [s1, numKeys, saleETH] = logTier(levelContent, level, refCountMap, txNodesBuyMap, saleMap, currentTier);
-        //     if (numKeys > 0) {
-        //         s += s1;
-        //         totalKeys += numKeys;
-        //         totalSaleETH += saleETH;
-        //     }
-        // });
         levelContent = levelMap.get('1');
         const [s1, numKeys, saleETH] = logTier(levelContent, '1', refCountMap, txNodesBuyMap, saleMap, currentTier);
         if (numKeys > 0) {
